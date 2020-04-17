@@ -1,0 +1,81 @@
+---
+title: "JSON"
+author: "José Fernando zeea"
+date: "14/4/2020"
+output: html_document
+---
+
+# Leer datos de una URL
+
+```{r}
+library(httr)
+
+url <- "https://www.forbes.com/ajax/list/data?year=2018&uri=powerful-brands&type=organization"
+req <- GET(url)
+stop_for_status(req)
+json <- content(req, "text")
+forbesList <- fromJSON(json)
+```
+
+
+# Leer datos directamente de un texto
+
+```{r}
+texto <- '[{"ID":1,"Nombre":"Hector", "edad":20,"mencion_gaseosa":["Coca-Cola","Colombiana","Pepsi"],                  "hobbies":["Musica", "Correr"]},{"ID":2,"Nombre":"Carolina", "edad":40, "mencion_gaseosa":["Coca-Cola","Manzana Postobón","Sprite"],                 "hobbies":"Cine"},{"ID":3, "edad":27, "mencion_gaseosa":["Coca-Cola","Colombiana","Pepsi"], 
+                  "hobbies":["Escribir", "Viajar"]},{"ID":4,"Nombre":"Camila", "edad":18, "mencion_gaseosa":["Pepsi","Coca-Cola"]},{"ID":5,"Nombre":"Jose", "edad":50, "mencion_gaseosa":["Coca-Cola"],"hobbies":"Programar"}]'
+datos1 <- jsonlite::fromJSON(texto)
+
+df_mencion_gaseosa <- unnest(df_mencion_gaseosa[c("ID", "mencion_gaseosa")], "mencion_gaseosa")
+df_mencion_gaseosa <- df_mencion_gaseosa %>% group_by(ID) %>% mutate(ranking = paste0("Marca", 1:length(ID)))
+df_mencion_gaseosa <-  pivot_wider(df_mencion_gaseosa, id_cols = ID, names_from = ranking, 
+              values_from = mencion_gaseosa)
+
+```
+
+Ejercicio: hacer lo anterior para que los hobbies queden separados. 
+
+
+
+
+```{r}
+texto2 = '[{"ID":1,"Nombre":"Hector", "edad":20, "mencion_gaseosa":{"marca1":"Coca-Cola","marca2":"Colombiana","marca3":"Pepsi"}, 
+                  "hobbies":["Musica", "Correr"]},
+                {"ID":2,"Nombre":"Carolina", "edad":40, "mencion_gaseosa":{"marca1":"Coca-Cola","marca2":"Manzana Postobón","marca3":"Sprite"}, 
+                  "hobbies":"Cine"},
+                {"ID":3, "edad":27, "mencion_gaseosa":{"marca1":"Coca-Cola","marca2":"Colombiana","marca3":"Pepsi"}, 
+                  "hobbies":["Escribir", "Viajar"]},
+                {"ID":4,"Nombre":"Camila", "edad":18, "mencion_gaseosa":{"marca1":"Pepsi","marca2":"Coca-Cola"}},
+                {"ID":5,"Nombre":"Jose", "edad":50, "mencion_gaseosa":{"marca1":"Coca-Cola"}, 
+                  "hobbies":"Programar"}]'
+datos2 <- fromJSON(texto2)
+```
+
+```{r}
+setwd("C:/Users/Home/Documents/Laboral2020/Konrad Lorenz/Datos Estructurados y No estructurados/Clase11")
+library(jsonlite)
+# yelp <- fromJSON("yelp_academic_dataset_business.json")
+yelp <- stream_in(file("yelp_academic_dataset_business.json"))
+```
+
+```{r}
+dim(yelp)
+```
+
+```{r}
+yelp_flat <- flatten(yelp)
+dim(yelp_flat)
+```
+
+Filtrar los restaurantes: seleccionar los restaurantes que incluyen dieta vegetariana
+
+```{r}
+datos_tipoNegocio <- yelp_flat %>% select(business_id, categories)
+```
+
+```{r}
+library(tidyr)
+datos_tipoNegocio <- unnest(datos_tipoNegocio, categories)
+datos_tipoNegocio <- left_join(datos_tipoNegocio, yelp_flat[c("business_id", "attributes.Dietary Restrictions.vegetarian")], by = "business_id")
+
+```
+

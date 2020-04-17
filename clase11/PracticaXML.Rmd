@@ -1,0 +1,223 @@
+---
+title: "Untitled"
+author: "José Fernando Zea"
+date: "10/4/2020"
+output: html_document
+---
+
+<bond_movies>
+<movie id="1">
+<name>Dr. No</name>
+<year>1962</year>
+<actors bond="Sean Connery" villain="Joseph Wiseman"/>
+<budget>1.1M</budget>
+<boxoffice>59.5M</boxoffice>
+</movie>
+<movie id="2">
+<name>Live and Let Die</name>
+<year>1973</year>
+<actors bond="Roger Moore" villain="Yaphet Kotto"/>
+<budget>7M</budget>
+<boxoffice>126.4M</boxoffice>
+</movie>
+<movie id="3">
+<name>Skyfall</name>
+<year>2012</year>
+<actors bond="Daniel Craig" villain="Javier Bardem"/>
+<budget>175M</budget>
+<boxoffice>1108.6M</boxoffice>
+</movie>
+</bond_movies>
+
+* En los archivos xml están conformados por tags en donde  existe una jerarqúia.
+* Al igual que en html los tag se abren con <> y se cierran con </>
+* Un elemento xml puede contener atributos (describe los elementos en más detalle), datos, otros elementos xml o simplemente pueden no contener información.
+
+Ejemplo: <actors bond="Sean Connery" villain="Joseph Wiseman"/>.
+* El nombre del elemento: actors
+* La apertura y cierre del elemento xml <actors \>
+* Nombre del primer atributo: bond
+* Nombre del segundo atributo:villain
+* Valor del primer atributo: Sean Connery
+* Valor del segundo elemento: Joseph Wiseman
+
+Los elementos xml suelen almacenarse en una jerarqúia: en el ejemplo de películas el elemento xml bond_movies, los hijos son  movies, a su vez name, year, actors, budget y boxoffice corresponden a los nietos.
+
+* Los nombres de los elementos xml deben comenzar con letras y no deben tener espacios.
+* Algunas de las palabras reservadas son >, <, &, ", '
+
+
+```{r}
+setwd("C:/Users/Home/Documents/Laboral2020/Konrad Lorenz/Datos Estructurados y No estructurados/Clase11")
+```
+
+```{r}
+library(XML)
+bond <- xmlParse("bond.xml")
+ class(bond)
+``` 
+
+
+```{r}
+root <- xmlRoot(bond)
+xmlName(root)
+```
+
+```{r}
+root[[1]]
+class(root[[1]])
+```
+
+```{r}
+root[1]
+class(root[1])
+
+```
+
+```{r}
+root[[2]]
+```
+```{r}
+root[[2]][[1]]
+
+```
+
+```{r}
+ root[["movie"]]
+```
+
+```{r}
+ root[["movie"]]
+```
+
+```{r}
+ root["movie"]
+```
+
+
+```{r}
+root[["movie"]][[1]][[1]]
+```
+
+```{r}
+xmlSApply(root, xmlAttrs)
+```
+
+
+```{r}
+xmlSApply(root, xmlGetAttr, "id")
+```
+
+
+(movie.df <- xmlToDataFrame(root))
+
+
+```{r}
+ xmlSApply(root[[1]], xmlValue)
+```
+
+```{r}
+(movie.df <- xmlToDataFrame(root))
+```
+
+
+
+```{r}
+(movie.df <- xmlToList(root))
+```
+
+```{r}
+as.data.frame(movie.df)
+```
+
+
+```{r}
+data.frame(
+  Id = rows %>% xml_attr("id"),
+  PostTypeId = rows %>% xml_attr("postid"),
+  score = rows %>% xml_attr("score")
+)
+```
+
+```{r}
+library(rvest)
+bond_xml <- read_xml("bond.xml")
+```
+
+```{r}
+datos <- data.frame(actors = bond_xml %>% xml_nodes("movie") %>% xml_attr("id"),
+                   name =  bond_xml %>% xml_nodes("name") %>% xml_text(),
+                    year = bond_xml %>% xml_nodes("year") %>% xml_double(),
+                    actor_bond = bond_xml %>% xml_nodes("actors") %>% xml_attr("bond"),
+                    actor_villain = bond_xml %>% xml_nodes("actors") %>%   
+                                    xml_attr("villain"),
+                    budget = bond_xml %>% xml_nodes("budget") %>% xml_text(),
+                    boxoffice = bond_xml %>% xml_nodes("boxoffice") %>% xml_text(),   
+                    stringsAsFactors = F) 
+                   
+datos$budget <- as.numeric(gsub("M", "", datos$budget))
+datos$boxoffice <- as.numeric(gsub("M", "", datos$boxoffice))
+
+```
+
+
+```{r}
+library(rvest)
+technology_xml <- xmlParse(file = "technology.xml")
+df <- xmlToDataFrame(technology_xml)
+
+```
+
+```{r}
+library(rvest)
+books_xml <- xmlParse("books.xml")
+books <- xmlToDataFrame(books_xml)
+
+```
+
+```{r}
+cd_catalog_xml <- xmlParse("cd_catalog.xml")
+root <- xmlRoot(cd_catalog_xml)
+df_catalog_xml  <- t(xmlSApply(root, function(x) xmlSApply(x, xmlValue)))
+```
+
+```{r}
+df_catalog_xml <- xmlToDataFrame(cd_catalog_xml)
+
+```
+
+# Leer archivos xml directamente de la web 
+
+
+```{r}
+library(XML)
+# Save the URL of the xml file in a variable
+library(httr)
+xml.url <- "http://www.w3schools.com/xml/plant_catalog.xml"
+plants <- xmlParse(rawToChar(GET(xml.url)$content))
+root_plants <- xmlRoot(plants)
+df_plants <- xmlToDataFrame(root_plants)
+df_plants$PRICE <- as.numeric(gsub("\\$", "", as.character(df_plants$PRICE)))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+library(rvest)
+elecciones <- xmlParse(file = "elecciones.xml")
+df_elecciones <- xmlToDataFrame(elecciones)
+```
+
