@@ -9,7 +9,9 @@ output: html_document
 
 ```{r}
 library(httr)
-
+library(jsonlite)
+library(tidyr)
+library(dplyr)
 url <- "https://www.forbes.com/ajax/list/data?year=2018&uri=powerful-brands&type=organization"
 req <- GET(url)
 stop_for_status(req)
@@ -17,6 +19,11 @@ json <- content(req, "text")
 forbesList <- fromJSON(json)
 ```
 
+```{python}
+import pandas
+a = [3,4,5,6]
+a
+```
 
 # Leer datos directamente de un texto
 
@@ -25,14 +32,72 @@ texto <- '[{"ID":1,"Nombre":"Hector", "edad":20,"mencion_gaseosa":["Coca-Cola","
                   "hobbies":["Escribir", "Viajar"]},{"ID":4,"Nombre":"Camila", "edad":18, "mencion_gaseosa":["Pepsi","Coca-Cola"]},{"ID":5,"Nombre":"Jose", "edad":50, "mencion_gaseosa":["Coca-Cola"],"hobbies":"Programar"}]'
 datos1 <- jsonlite::fromJSON(texto)
 
-df_mencion_gaseosa <- unnest(df_mencion_gaseosa[c("ID", "mencion_gaseosa")], "mencion_gaseosa")
+df_mencion_gaseosa <- unnest(datos1[c("ID", "mencion_gaseosa")], "mencion_gaseosa")
 df_mencion_gaseosa <- df_mencion_gaseosa %>% group_by(ID) %>% mutate(ranking = paste0("Marca", 1:length(ID)))
-df_mencion_gaseosa <-  pivot_wider(df_mencion_gaseosa, id_cols = ID, names_from = ranking, 
+df_mencion_gaseosa <-  tidyr::pivot_wider(df_mencion_gaseosa, id_cols = ID, names_from = ranking, 
               values_from = mencion_gaseosa)
 
 ```
-
 Ejercicio: hacer lo anterior para que los hobbies queden separados. 
+
+```{r}
+df_hobbies <- unnest(datos1[c("ID", "hobbies")], "hobbies")
+df_hobbies <- df_hobbies %>% group_by(ID) %>% mutate(ranking = paste0("Hobbie", 1:length(ID)))
+df_hobbies <-  pivot_wider(df_hobbies, id_cols = ID, names_from = ranking,
+              values_from = hobbies)
+```
+
+```{r}
+datos1 <- jsonlite::fromJSON(texto)
+
+datos1 <- inner_join(datos1[,c("ID", "Nombre", "edad")],
+df_mencion_gaseosa, by = "ID")
+datos1 <- inner_join(datos1, df_hobbies, by = "ID")
+```
+
+Ejercicio: crear una función que recorra las columnas múltiples
+
+```{r}
+datos1 <- jsonlite::fromJSON(texto)
+# Ver las columnas que tienen al interior información en una lista
+str(datos1)
+```
+
+Paso 1: Identificar las columnas que tienen respuesta múltiple.
+
+```{r}
+clase_col <- rep(NA, ncol(datos1))
+for(i in 1:ncol(datos1)){
+clase_col[i] <-  class(datos1[,i])
+}
+
+nombres_multiples <- names(datos1)[clase_col == "list"]
+library(rlang)
+
+jsonvarMultiple <- function(nombre_var_multiple){
+var <- rlang::sym(nombre_var_multiple)
+
+df <- unnest(datos1[c("ID", nombre_var_multiple)], nombre_var_multiple)
+df <- df %>% group_by(ID) %>% mutate(ranking = paste0(nombre_var_multiple, 1:length(ID)))
+df <-  pivot_wider(df, id_cols = ID, names_from = ranking,
+              values_from =  !!var)
+df
+}
+
+nombre_df_multiples <- paste0("df_", nombres_multiples)
+
+for(i in 1:length(nombres_multiples)){
+  assign(nombre_df_multiples[i], jsonvarMultiple(nombres_multiples[i]))
+}
+
+datosMultiples <- inner_join(get(nombre_df_multiples[1]), get(nombre_df_multiples[2]),by = "ID")
+
+for(i in 3:length(nombres_multiples)){
+datosMultiples <- inner_join(datosMultiples, get(nombre_df_multiples[i]),by = "ID")
+}
+
+
+```
 
 
 
@@ -62,20 +127,21 @@ dim(yelp)
 ```
 
 ```{r}
-yelp_flat <- flatten(yelp)
-dim(yelp_flat)
+#yelp_flat <- flatten(yelp)
+#dim(yelp_flat)
 ```
 
 Filtrar los restaurantes: seleccionar los restaurantes que incluyen dieta vegetariana
 
 ```{r}
-datos_tipoNegocio <- yelp_flat %>% select(business_id, categories)
-```
-
-```{r}
-library(tidyr)
+datos_tipoNegocio <- yelp %>% select(business_id, full_address,
 datos_tipoNegocio <- unnest(datos_tipoNegocio, categories)
-datos_tipoNegocio <- left_join(datos_tipoNegocio, yelp_flat[c("business_id", "attributes.Dietary Restrictions.vegetarian")], by = "business_id")
-
+dieta_vegatariana <- yelp$attributes$`Dietary Restrictions`$vegetarian
+df_vegetariano <- data.frame(business_id = yelp$business_id, 
+           vegetariano = dieta_vegatariana, stringsAsFactors = F)
+ datos_tipoNegocio2 <- left_join(datos_tipoNegocio,
+        df_vegetariano, by = "business_id")
+consulta <- datos_tipoNegocio2 %>% 
+  filter(categories  == "Restaurants" & vegetariano)
 ```
 
