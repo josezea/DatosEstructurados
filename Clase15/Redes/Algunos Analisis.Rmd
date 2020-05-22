@@ -1,0 +1,258 @@
+---
+title: "Transporte aéreo"
+author: "José Fernando zeea"
+date: "15/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo = F}
+library(dplyr)
+library(igraph)
+library(gridExtra)
+library(forcats)
+library(ggplot2)
+library(tidyr)
+library(ggrepel)
+```
+
+```{r, warning=FALSE, message=FALSE, echo = F}
+setwd("../output")
+load("RedesTransporteAereo.Rdata")
+```
+
+# Medidas básicas:
+ 
+El número de vertices de la red naciona de tranporte aéreo  en el año  2004 fue de `r gorder(g_2004)`,
+
+
+
+En el siguiente gráfico se muestra la distribución del total de pasajeros movilizados por cada uno de los aeropuertos  en el 2018 el número de vertices de vertices fue `r gorder(g_2018)`.
+La red nacional de transporte aéreo presento en el año 2004 `r gsize(g_2004)` enlaces, por otro lado en el año 2018 fue de `r gsize(g_2018)` enlaces. 
+
+La correlación entre el número de vuelos y el número de pasajeros en el año 2004 es
+`r round(cor(df_flights2004$num_vuelos,df_flights2004$num_pasajeros), 2)`, en el año 2018 esta correlación aumentó a `r round(cor(df_flights2018$num_vuelos, df_flights2018$num_pasajeros), 2)`, dada la alta correlación en el número de vuelos y el número de pasajeros movilizado en las rutas colombianas de transporte aéreo se abordará el análisis de la red  considarando como pesos de los enlaces de la red el número de pasajeros. En este trabajo se considera la red de trasporte aéreo colombiano como una red con enlaces dirigidas a excepción del análisis de detección de comunidades, en cuyo caso la red considerada se abordará con enlaces no dirigidos. El considerar la red de transporte aéreo como una red no dirigido está justificada en la alta correlación entre el número de pasajeros movilizados en las dos direcciones de las rutas (por ejemplo, Bog-Cali, Cali-Bog), 
+`r round(cor(dfOrigenesDestinos_2004[["1"]], dfOrigenesDestinos_2004[["2"]],  use = "pairwise.complete.obs"), 2)` para el 2004 y `r round(cor(dfOrigenesDestinos_2018[["1"]], dfOrigenesDestinos_2018[["2"]],  use = "pairwise.complete.obs"), 2)` para el 2018.
+
+
+
+
+```{r, warning=FALSE, message=FALSE, echo = F}
+df_OriginAirport <- df_flights2004 %>% group_by(Origen) %>% summarise(num_pasajeros = sum(num_pasajeros)) %>% arrange(-num_pasajeros)
+  
+df_OriginAirport$Pct_num_pasajeros <-  100 * df_OriginAirport$num_pasajeros / sum(df_OriginAirport$num_pasajeros)
+df_OriginAirport$CumPct_num_pasajeros <-  cumsum(df_OriginAirport$Pct_num_pasajeros ) 
+
+df_OriginAirport <- rbind(top_n(df_OriginAirport, n = 30, wt = num_pasajeros),
+      slice(df_OriginAirport, 31:n()) %>%    
+      summarise(Origen = "OTH", num_pasajeros = sum(num_pasajeros),
+                Pct_num_pasajeros = sum(Pct_num_pasajeros), 
+                CumPct_num_pasajeros = 100))
+      
+
+df_OriginAirport$Origen <- fct_rev(fct_inorder(df_OriginAirport$Origen))
+g_princOrig2004 <- ggplot(df_OriginAirport, aes(x = Origen, 
+                             y = num_pasajeros,
+fill = factor(ifelse(Origen == "OTH", "Highlighted", "Normal")))) +
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(Pct_num_pasajeros, 1)),  hjust=-0.3) + xlab("Origen") +
+scale_fill_manual("",values = c("red","black")) +  ylab("Número de pasajeros (2004)") + theme_bw() +
+  theme(legend.position="none") + coord_flip()
+```
+
+```{r, warning=FALSE, message=FALSE, echo = F}
+df_DestinoAirport <- df_flights2004 %>% group_by(Destino) %>% summarise(num_pasajeros = sum(num_pasajeros)) %>% arrange(-num_pasajeros)
+  
+df_DestinoAirport$Pct_num_pasajeros <-  100 * df_DestinoAirport$num_pasajeros / sum(df_DestinoAirport$num_pasajeros)
+df_DestinoAirport$CumPct_num_pasajeros <-  cumsum(df_DestinoAirport$Pct_num_pasajeros ) 
+
+df_DestinoAirport <- rbind(top_n(df_DestinoAirport, n = 30, wt = num_pasajeros),
+      slice(df_DestinoAirport, 31:n()) %>%    
+      summarise(Destino = "OTH", num_pasajeros = sum(num_pasajeros),
+                Pct_num_pasajeros = sum(Pct_num_pasajeros), 
+                CumPct_num_pasajeros = 1))
+      
+
+df_DestinoAirport$Destino <- fct_rev(fct_inorder(df_DestinoAirport$Destino))
+g_princDest2004 <-ggplot(df_DestinoAirport, aes(x = Destino, 
+                             y = num_pasajeros,
+fill = factor(ifelse(Destino == "OTH", "Highlighted", "Normal")))) +
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(Pct_num_pasajeros, 1)),  hjust=-0.3) + xlab("Destino") +
+   ylab("Número de pasajeros (2004)") +
+scale_fill_manual("",values = c("red","black")) +  theme_bw() +
+  theme(legend.position="none") + coord_flip()
+```
+
+
+
+```{r, warning=FALSE, message=FALSE, echo = F, fig.height=12, fig.width=12}
+df_OriginAirport <- df_flights2018 %>% group_by(Origen) %>% summarise(num_pasajeros = sum(num_pasajeros)) %>% arrange(-num_pasajeros)
+  
+df_OriginAirport$Pct_num_pasajeros <-  100 * df_OriginAirport$num_pasajeros / sum(df_OriginAirport$num_pasajeros)
+df_OriginAirport$CumPct_num_pasajeros <-  cumsum(df_OriginAirport$Pct_num_pasajeros ) 
+
+df_OriginAirport <- rbind(top_n(df_OriginAirport, n = 30, wt = num_pasajeros),
+      slice(df_OriginAirport, 31:n()) %>%    
+      summarise(Origen = "OTH", num_pasajeros = sum(num_pasajeros),
+                Pct_num_pasajeros = sum(Pct_num_pasajeros), 
+                CumPct_num_pasajeros = 100))
+      
+
+df_OriginAirport$Origen <- fct_rev(fct_inorder(df_OriginAirport$Origen))
+g_princOrig2018 <- ggplot(df_OriginAirport, aes(x = Origen, 
+                             y = num_pasajeros,
+fill = factor(ifelse(Origen == "OTH", "Highlighted", "Normal")))) +
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(Pct_num_pasajeros, 1)),  hjust=-0.5) + xlab("Origen") +
+scale_fill_manual("",values = c("red","black")) +  ylab("Número de pasajeros (2018)") + theme_bw() +
+  theme(legend.position="none") + coord_flip()
+```
+
+```{r, warning=FALSE, message=FALSE, echo = F}
+df_DestinoAirport <- df_flights2018 %>% group_by(Destino) %>% summarise(num_pasajeros = sum(num_pasajeros)) %>% arrange(-num_pasajeros)
+  
+df_DestinoAirport$Pct_num_pasajeros <-  100 * df_DestinoAirport$num_pasajeros / sum(df_DestinoAirport$num_pasajeros)
+df_DestinoAirport$CumPct_num_pasajeros <-  cumsum(df_DestinoAirport$Pct_num_pasajeros ) 
+
+df_DestinoAirport <- rbind(top_n(df_DestinoAirport, n = 30, wt = num_pasajeros),
+      slice(df_DestinoAirport, 31:n()) %>%    
+      summarise(Destino = "OTH", num_pasajeros = sum(num_pasajeros),
+                Pct_num_pasajeros = sum(Pct_num_pasajeros), 
+                CumPct_num_pasajeros = 1))
+      
+
+df_DestinoAirport$Destino <- fct_rev(fct_inorder(df_DestinoAirport$Destino))
+g_princDest2018 <- ggplot(df_DestinoAirport, aes(x = Destino, 
+                             y = num_pasajeros,
+fill = factor(ifelse(Destino == "OTH", "Highlighted", "Normal")))) +
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(Pct_num_pasajeros, 1)),  hjust=-0.5) + xlab("Destino") +
+   ylab("Número de pasajeros (2018)") +
+scale_fill_manual("",values = c("red","black")) +  theme_bw() +
+  theme(legend.position="none") + coord_flip()
+
+```
+
+Los principales aeropuertos de origen y destino en el año 2004 según el número de pasajeros fueron:
+
+```{r, warning=FALSE, message=FALSE, echo = F, fig.align=TRUE, fig.width=20, fig.height=16}
+grid.arrange(g_princOrig2004, g_princOrig2018 , g_princDest2004,  g_princDest2018, nrow = 2, ncol = 2)
+
+```
+
+
+
+
+ 
+# Análisis de redes
+
+ENTENDER LOS AEROPUERTOS MAS CONECTADOS
+
+ Se encuentran 17 aeropuertos con menos de 17 vuelos en el año
+ El número de pasajeros 
+ 
+```{r, warning=FALSE, message=FALSE, echo = T}
+in_degree2018 <- as.data.frame(as.table(degree(g_2018, mode = c("in"))))
+names(in_degree2018) <- c("Airport", "in_degree")
+out_degree2018 <- as.data.frame(as.table(degree(g_2018, mode = c("out"))))
+names(out_degree2018) <- c("Airport", "out_degree")
+data_degree <- full_join(in_degree2018, out_degree2018, by = "Airport")
+```
+ 
+```{r, warning=FALSE, message=FALSE, echo = T}
+
+data_degree_long <- data_degree %>%
+  pivot_longer(- Airport, names_to = "type", values_to = "degree")
+
+set.seed(12345)
+
+plot_degree2018 <- ggplot(data = data_degree_long, aes(x = type, 
+                                                       y = degree,
+                                                       colour = type,
+                                    label = Airport)) +
+  #geom_jitter(position = position_jitter(seed = 12345)) +
+  geom_text_repel(position = position_jitter(seed = 12345), 
+                  segment.color = 'transparent') +
+  scale_color_manual(values = c("darkblue", "darkgreen")) + 
+  theme(legend.position="none") +
+  theme_bw()
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo = T}
+farthest_vertices(g_2018)$distance
+get_diameter(g_2018)  
+
+```
+
+```{r}
+betweenness_2018 <- betweenness(g_2018, directed = TRUE, normalized = T, 
+                   weights = E(g_2018)$num_pasajeros)
+sort(betweenness_2018, decreasing = T)
+summary(betweenness_2018)
+```
+```{r}
+sort(eigen_centrality(g_2018, directed = TRUE, weights  = E(g_2018)$num_pasajeros)$vector, 
+     decreasing = T)
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo = T}
+pagerank_2018 <- page.rank(g_2018, directed = TRUE, 
+                   weights = E(g_2018)$num_pasajeros)
+sort(pagerank_2018$vector, decreasing = T)
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo = T}
+# Get the diameter of the graph g
+
+diameter(g_2018, directed = FALSE)
+
+# Get the average path length of the graph g
+mean_distance(g_2018, directed = FALSE)
+
+gdensity_2018 <- edge_density(g_2018)
+
+```
+
+```{r, warning=FALSE, message=FALSE, echo = T}
+# Generate 1000 random graphs
+grandom_2018 <- vector('list', 1000)
+
+for(i in 1:1000){
+        grandom_2018[[i]] <- erdos.renyi.game(n = gorder(g_2018), p.or.m = gdensity_2018, type = "gnp")
+}
+
+# Calculate average path length of 1000 random graphs
+gAveragePaths_2018 <- unlist(lapply(grandom_2018, average.path.length, directed = T))
+mean(gAveragePaths_2018)
+```
+
+```{r, warning=FALSE, message=FALSE, echo = T}
+triangles(g_2018)
+triangulos <- matrix(triangles(g_2018), nrow = 3)
+
+```
+
+
+# Detección de comunidades
+
+```{r, warning=FALSE, message=FALSE, echo = T}
+comunidades_2014 <- fastgreedy.community(g_2004_undirected)
+sort(membership(comunidades_2014))
+
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo = T}
+comunidades_2018 <- fastgreedy.community(g_2018_undirected)
+sort(membership(comunidades_2018))
+
+```
+

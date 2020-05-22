@@ -1,0 +1,54 @@
+---
+title: "Untitled"
+output: word_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+library(statnet)
+library(UserNetR)
+data(Moreno)
+```
+
+En este estudio se aborda el estudio de la red de transporte aéreo, diferentes aspectos como el número de vuelos, de pasajeros de los vuelos regulares nacionales son abordados. Se analiza la información del año 2018. Se analiza también el cumplimiento de las aerolíneas.
+
+El presente estudio se aborda desde dos perspectivas, el análisis de redes y el análisis exploratorio de datos. A continuación se realiza un resumen del análisis de redes con el cual se abordara este estudio.
+
+
+Las redes pueden ser dirigidas o no dirigidas, Las redes no dirigidas no disponen de dirección, simplemente establece una relación. Ejemplo de estas redes son las colaboraciones, los contactos de redes sociales. Las redes dirigidas en cambio disponen de dirección, las transacciones monetarias, el transporte aéreo son ejemplos de estas redes.
+
+En la figura 1 se presenta una red:
+
+```{r, echo = FALSE}
+library(UserNetR)
+data(Moreno)
+plot(Moreno)
+```
+
+
+
+# Estadísticas de una red`
+* Tamaño de una red: es el número de miembros  (actores) de la red, también se le llama nodos, vértices.
+* Enlaces de la red: se le denomina también interacciones, se denota como L, el número de enlaces en la red.
+* Número posible de enlaces de la red: esta cantidad depende de si la red es dirigida o no. Para una red dirigida con k actores el número de posible interacciones es $kP2 = \frac{k!}{(k-2)!}=k(k-1)$, en esta clase de redes el rol de los dos actores debe tenerse en cuenta.
+Para una red no dirigida el número de interacciones es ${k \choose 2} = frac{k!}{2!(k-2)!}=\frac{k(k-1)}{2}$, para este tipo de red, el rol que tiene los actores es el mismo por lo cual no es necesario tener en cuenta el orden de los actores en esa conexión.
+* Densidad de una red: se define la densidad como el número de enlaces de la red sobre el número posible de interacciones de una red. Para una red dirigida es:
+
+$$  D = \frac{L}{k(k-1)}$$
+
+
+Para una red no dirigida la expresión es: 
+$$  D = \frac{L}{2k(k-1)}$$
+
+* Componentes: es un subgrupo en donde todos los actores están conectados directa o indirectamente. El análisis de componentes permite el análisis de comunidades de la red. 
+
+* Diámetro: mide que tan compacta es una red. El diámetro se calcula tomando el valor máximo del cálculo de cada uno de los pasos más corto entre cada combinación posible de cada par de nodos. Por ejemplo si se disponen de tres nodos (A, B y C),  para cada par de nodos A, B, A y C, y B y C se calcula el menor número de pasos para conectar esos dos nodos, posteriormente se toma el máximo valor obtenido.
+Esta es una medida de que tan compacta o eficiente es una red, el diámetro refleja el peor escenario para enviar información a través de la red. El  diámetro de una red, solo está definido para redes de un componente.
+
+* Coeficiente de agrupamiento: se utiliza para cuantificar que tan agrupados están los grafos la transitividad: se define como la proporción de triángulos cerrados (triadas donde los tres uniones se observan) sobre el total de triángulos abiertos y cerrados (triadas donde dos o tres enlaces se observan). Así al igual que la densidad la transitividad es una razón que puede variar
+entre cero y uno.
+
+Por otro lado también se llevará a cabo un análisis exploratorio de datos que permita entender la dinámica de las rutas. Se calcularan las principales rutas, aeropuertos y algunas cifras relevantes, se utilizan diferentes gráficos (diagramas de barras, diagramas de cajas, series temporales) que permitan un entendimiento de la dinámica del transporte aéreo.
